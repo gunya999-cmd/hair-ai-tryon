@@ -38,44 +38,35 @@ function App() {
 
   async function createJob() {
     if (!file) return;
-    setStatus('queued');
+    setStatus('processing');
     try {
-      const uploadReq = await fetch(`${API_BASE}/api/upload-url`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: file.name, contentType: file.type })
-      }).then(r => r.json());
-
-      await fetch(uploadReq.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-
       const job = await fetch(`${API_BASE}/api/create-job`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ originalKey: uploadReq.key, requestedStyles: styles })
-      }).then(r => r.json());
+        body: JSON.stringify({ requestedStyles: styles })
+      }).then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+      });
+
+      if (Array.isArray(job.results)) {
+        setJobId(job.jobId || 'mock-job');
+        setResults(job.results);
+        setStatus('done');
+        return;
+      }
 
       setJobId(job.jobId);
-      pollJob(job.jobId);
+      const finalJob = await fetch(`${API_BASE}/api/job/${job.jobId}`).then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+      });
+      setResults(finalJob.results || []);
+      setStatus('done');
     } catch (err) {
       console.error(err);
       setStatus('error');
     }
-  }
-
-  async function pollJob(id: string) {
-    setStatus('processing');
-    const timer = window.setInterval(async () => {
-      const job = await fetch(`${API_BASE}/api/job/${id}`).then(r => r.json());
-      if (job.status === 'done') {
-        window.clearInterval(timer);
-        setResults(job.results);
-        setStatus('done');
-      }
-      if (job.status === 'error') {
-        window.clearInterval(timer);
-        setStatus('error');
-      }
-    }, 2000);
   }
 
   async function swipe(liked: boolean) {
