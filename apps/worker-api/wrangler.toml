@@ -1,0 +1,25 @@
+name = "hair-ai-tryon-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-28"
+
+[vars]
+AI_PROVIDER = "mock"
+PUBLIC_R2_BASE_URL = "https://example.com"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "hair-tryon-images"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hair-tryon-db"
+database_id = "PUT_D1_DATABASE_ID_HERE"
+
+[[queues.producers]]
+binding = "GENERATION_QUEUE"
+queue = "hair-generation-jobs"
+
+[[queues.consumers]]
+queue = "hair-generation-jobs"
+max_batch_size = 1
+max_batch_timeout = 30

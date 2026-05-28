@@ -1,0 +1,16 @@
+{
+  "name": "hair-ai-tryon",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:api": "npm --workspace apps/worker-api run dev",
+    "build": "npm --workspace apps/web run build && npm --workspace apps/worker-api run build",
+    "deploy:web": "npm --workspace apps/web run deploy",
+    "deploy:api": "npm --workspace apps/worker-api run deploy"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
