@@ -12,7 +12,7 @@ const corsHeaders = {
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: corsHeaders });
 
-const jobs = new Map<string, any>();
+const jobs = new Map<string, unknown>();
 
 const styles = [
   "Textured crop",
@@ -33,6 +33,18 @@ export default {
       return json({ ok: true, service: "hair-ai-tryon-api", mode: env.AI_PROVIDER || "mock" });
     }
 
+    if (url.pathname === "/api/upload-url" && request.method === "POST") {
+      const key = `mock_${crypto.randomUUID()}`;
+      return json({
+        key,
+        uploadUrl: `${url.origin}/api/mock-upload/${key}`
+      });
+    }
+
+    if (url.pathname.startsWith("/api/mock-upload/") && request.method === "PUT") {
+      return json({ ok: true });
+    }
+
     if (url.pathname === "/api/create-job" && request.method === "POST") {
       const jobId = `job_${crypto.randomUUID()}`;
 
@@ -43,12 +55,14 @@ export default {
         imageUrl: `https://placehold.co/900x1100/png?text=${encodeURIComponent(style)}`
       }));
 
-      jobs.set(jobId, {
+      const job = {
         id: jobId,
         status: "done",
         results,
         createdAt: new Date().toISOString()
-      });
+      };
+
+      jobs.set(jobId, job);
 
       return json({ jobId, status: "done" });
     }

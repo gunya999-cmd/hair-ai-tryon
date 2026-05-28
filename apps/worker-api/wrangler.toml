@@ -3,4 +3,4 @@ main = "src/index.ts"
 compatibility_date = "2026-05-28"
 
 [vars]
-AI_PROVIDER = "mock"
+AI_PROVIDER = "openai"
