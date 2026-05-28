@@ -4,10 +4,19 @@ import { Camera, Heart, X, Wand2, Upload, Sparkles } from 'lucide-react';
 import './styles.css';
 
 type JobStatus = 'idle' | 'uploaded' | 'queued' | 'processing' | 'done' | 'error';
-type Result = { id: string; imageUrl?: string; style: string; liked?: boolean };
+type Result = { id: string; imageUrl?: string; style: string; liked?: boolean; provider?: string };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787';
 const styles = ['Textured crop', 'Curtain bangs', 'Layered medium', 'Soft bob', 'Long waves', 'Classic fade'];
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 function App() {
   const [preview, setPreview] = useState<string | null>(null);
@@ -21,8 +30,8 @@ function App() {
   const helperText = useMemo(() => {
     if (status === 'idle') return 'Загрузи фото лица. Лучше фронтально, хорошее освещение, без очков и шапки.';
     if (status === 'uploaded') return 'Фото готово. Запускай генерацию вариантов.';
-    if (status === 'queued' || status === 'processing') return 'Генерируем демо-варианты. Следующий этап — подключение реального AI.';
-    if (status === 'done') return 'Свайпай: нравится / не нравится. Сейчас это стабильный mock-preview.';
+    if (status === 'queued' || status === 'processing') return 'AI меняет прическу. Это может занять немного времени.';
+    if (status === 'done') return 'Свайпай: нравится / не нравится. Если видишь mock — AI provider вернул ошибку или не получил фото.';
     return 'Что-то пошло не так. Можно попробовать другое фото.';
   }, [status]);
 
@@ -40,10 +49,11 @@ function App() {
     if (!file) return;
     setStatus('processing');
     try {
+      const imageDataUrl = await fileToDataUrl(file);
       const job = await fetch(`${API_BASE}/api/create-job`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestedStyles: styles })
+        body: JSON.stringify({ requestedStyles: styles, imageDataUrl })
       }).then(async (r) => {
         if (!r.ok) throw new Error(await r.text());
         return r.json();
@@ -51,7 +61,7 @@ function App() {
 
       const generatedResults = Array.isArray(job.results)
         ? job.results
-        : styles.map((style) => ({ id: crypto.randomUUID(), style }));
+        : styles.map((style) => ({ id: crypto.randomUUID(), style, provider: 'mock' }));
 
       setJobId(job.jobId || 'mock-job');
       setResults(generatedResults);
@@ -59,7 +69,7 @@ function App() {
       setStatus('done');
     } catch (err) {
       console.error(err);
-      const fallbackResults = styles.map((style) => ({ id: crypto.randomUUID(), style }));
+      const fallbackResults = styles.map((style) => ({ id: crypto.randomUUID(), style, provider: 'mock' }));
       setJobId('local-mock-job');
       setResults(fallbackResults);
       setActive(0);
@@ -100,13 +110,17 @@ function App() {
         <div className="panel resultPanel">
           {activeCard ? (
             <div className="card">
-              <div className="mockImage">
-                {preview ? <img src={preview} alt="Uploaded face preview" /> : null}
-                <div className="hairOverlay"><Sparkles size={18}/> {activeCard.style}</div>
-                <div className="mockNote">AI preview mock</div>
-              </div>
+              {activeCard.imageUrl && activeCard.provider !== 'mock' ? (
+                <img className="generatedImage" src={activeCard.imageUrl} alt={activeCard.style} />
+              ) : (
+                <div className="mockImage">
+                  {activeCard.imageUrl ? <img src={activeCard.imageUrl} alt={activeCard.style} /> : preview ? <img src={preview} alt="Uploaded face preview" /> : null}
+                  <div className="hairOverlay"><Sparkles size={18}/> {activeCard.style}</div>
+                  <div className="mockNote">AI preview mock</div>
+                </div>
+              )}
               <h2>{activeCard.style}</h2>
-              <p className="counter">Вариант {active + 1} из {results.length}</p>
+              <p className="counter">Вариант {active + 1} из {results.length} · {activeCard.provider || 'unknown'}</p>
               <div className="actions">
                 <button className="no" onClick={() => swipe(false)}><X/> Не нравится</button>
                 <button className="yes" onClick={() => swipe(true)}><Heart/> Нравится</button>
