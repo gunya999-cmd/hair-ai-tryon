@@ -1,5 +1,19 @@
-﻿type Env = {
+type Env = {
   AI_PROVIDER: string;
+};
+
+type Result = {
+  id: string;
+  style: string;
+  liked: null;
+  imageUrl: string;
+};
+
+type Job = {
+  id: string;
+  status: "done";
+  results: Result[];
+  createdAt: string;
 };
 
 const corsHeaders = {
@@ -12,7 +26,7 @@ const corsHeaders = {
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: corsHeaders });
 
-const jobs = new Map<string, any>();
+const jobs = new Map<string, Job>();
 
 const styles = [
   "Textured crop",
@@ -35,7 +49,6 @@ export default {
 
     if (url.pathname === "/api/create-job" && request.method === "POST") {
       const jobId = `job_${crypto.randomUUID()}`;
-
       const results = styles.map((style) => ({
         id: `res_${crypto.randomUUID()}`,
         style,
@@ -43,14 +56,15 @@ export default {
         imageUrl: `https://placehold.co/900x1100/png?text=${encodeURIComponent(style)}`
       }));
 
-      jobs.set(jobId, {
+      const job: Job = {
         id: jobId,
         status: "done",
         results,
         createdAt: new Date().toISOString()
-      });
+      };
 
-      return json({ jobId, status: "done" });
+      jobs.set(jobId, job);
+      return json({ jobId, status: "done", results });
     }
 
     if (url.pathname.startsWith("/api/job/") && request.method === "GET") {
